@@ -306,6 +306,6 @@ mm2 = na.omit(mm2)
 write.csv(mm2, file = 'Module membership table with DEGS adjp_less0.1 table.csv', row.names = F)
 
 
-de_res = res1
+write.csv(res1, 'file = results from limma on Treated over Cntl.csv')
 
 
