@@ -206,11 +206,6 @@ new_labs = as.data.frame(colnames(map2))
 pdf(file = 'Undirected network 18 modules.pdf')
 qgraph(map2, minimum = 0.4, cut = 0.9, vsize = 5, legend = F, borders = FALSE, layout='spring', posCol = "dodgerblue3", negCol = "firebrick3", label.cex=1, directed=F, color=new_cols)
 dev.off()
-#Bayesian networks
-net1 = mmhc(all_tog1) 
-pdf(file = 'Directed network 18 modules.pdf')
-qgraph(net1, vsize = 5, legend = F, borders = FALSE, layout='spring', label.cex=1, directed=T, color=new_cols, labels = colnames(map2))
-dev.off()
 
 #heatmap of modules and traits
 all_tog2 = MEs
@@ -242,7 +237,7 @@ dev.off()
 
 
 ##############################################################################################
-#perform DE]
+#perform DE
 library(limma)
 new_cnts = dcast(melt_dat, Sample_ID ~ gene_symbol, value.var = 'value', fun.aggregate = mean)
 row.names(new_cnts) = new_cnts$Sample_ID
@@ -294,9 +289,6 @@ ggplot(res1, aes(x=logFC, y=-log10(P.Value))) + theme_classic() +
   geom_label_repel(aes(x=logFC, y=-log10(P.Value), label = res1$label2), color = res1$label_col2, size = 2, label.size=NA, box.padding = 0.8, point.padding = 0.5, max.overlaps = Inf, alpha = .6, segment.color = 'grey50')  +   ggtitle('Volcano plot Treated over Cntl')
 dev.off()
 
-
-
-
 res1$deg_sig = ifelse(res1$adj.P.Val<0.1, 'LPS DE Significant', 'NS')
 module_membership$deg_sig = res1$deg_sig[match(module_membership$gene, res1$ID)]
 head(module_membership)
@@ -308,16 +300,13 @@ binned_sig_prots= module_membership %>%
 pdf(file = 'Proportion od DEGs per Module.pdf')
 ggplot(binned_sig_prots, aes(x=module, y=freq, fill =deg_sig)) + theme_classic2() + geom_col() +theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) + scale_x_continuous(labels = binned_sig_prots$module, breaks = binned_sig_prots$module) + xlab('Module #') + ylab('Proportion of genes') + scale_fill_manual(values=c('darkorchid3', 'gray20')) + ggtitle('Proportion od DEGs per Module')
 dev.off()
-
-
-
 mm2 = module_membership
 mm2 = mm2[mm2$gene %in% res1$ID[res1$adj.P.Val<0.1],]
 mm2 = na.omit(mm2)
 write.csv(mm2, file = 'Module membership table with DEGS adjp_less0.1 table.csv', row.names = F)
 
 
-de_res = read.csv('G:/My Drive/lab files/Dequina Nicholas/networks from LPS-treated pituitary/lps pituitary analysis with only females gtex august 2022/Differential expression lps vs control and enrichment analysis/results from limma on Treated over Cntl.csv')
+de_res = res1
 
 gene_set1 = de_res$ID[de_res$logFC>0][1:10]
 gene_set2 = de_res$ID[de_res$logFC<0][1:10]
