@@ -308,15 +308,4 @@ write.csv(mm2, file = 'Module membership table with DEGS adjp_less0.1 table.csv'
 
 de_res = res1
 
-gene_set1 = de_res$ID[de_res$logFC>0][1:10]
-gene_set2 = de_res$ID[de_res$logFC<0][1:10]
-ff_gene_set = c(gene_set1, gene_set2)
-tt1 = melt_dat[melt_dat$gene_symbol %in% ff_gene_set,]
-tt2 = tt1 %>% dplyr::group_by(gene_symbol) %>%  dplyr::mutate(zscore = (value - mean(value))/sd(value))
-
-nn1 = dcast(tt2, gene_symbol ~ Sample_ID, value.var = 'zscore', fun.aggregate = mean)
-nn2 = nn1[match(ff_gene_set, nn1$gene_symbol),]
-row.names(nn2) = nn2$gene_symbol
-nn2$gene_symbol=NULL
-
 
