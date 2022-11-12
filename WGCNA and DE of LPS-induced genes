@@ -1,4 +1,4 @@
-setwd('G:/My Drive/lab files/Dequina Nicholas/networks from LPS-treated pituitary')
+
 library(WGCNA)
 library(reshape2)
 library(factoextra)
@@ -8,9 +8,6 @@ library(pheatmap)
 library(colormap)
 library(pcaMethods)
 library(qgraph)
-library(bnlearn)
-library(bnstruct)
-library(FactoMineR)
 allowWGCNAThreads()
 expr_data = read.csv('20201006_lawson_nicholas_inflammation-in-polycystic-ovary-syndrome_rnaseq_data_exploration_20201106105257_filtered_pc_genes_tmm_normed_cpms_annot.csv')
 expr_data[1:10,1:10]
