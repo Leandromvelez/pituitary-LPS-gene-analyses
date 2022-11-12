@@ -1,0 +1,166 @@
+library(WGCNA)
+library(reshape2)
+library(factoextra)
+library(dplyr)
+library(MetBrewer)
+library(pheatmap)
+library(colormap)
+library(pcaMethods)
+library(qgraph)
+library(bnlearn)
+library(bnstruct)
+library(FactoMineR)
+allowWGCNAThreads()
+deg_set = read.csv('results from limma on Treated over Cntl.csv')
+load('GTEx NA included env.RData')
+
+working_dataset=GTEx_subfiltered
+row.names(working_dataset) = working_dataset$gene_tissue
+working_dataset$gene_tissue=NULL
+working_dataset = as.data.frame(t(working_dataset))
+working_dataset[1:5,1:5]
+test1 = working_dataset[,grepl('ITIH5', colnames(working_dataset))]
+colnames(test1)
+orths_table = read.delim('G:/My Drive/Datasets/Mouse/genome files/Mouse Gene info with Human Orthologues.txt')
+deg_set$deg_sig_stringent = ifelse(deg_set$adj.P.Val<0.05, 'LPS DE Significant', 'NS')
+sig_set = deg_set[deg_set$deg_sig_stringent=='LPS DE Significant',]
+sig_set$human_orth = orths_table$human_orth[match(sig_set$ID, orths_table$Symbol)]
+sig_set = sig_set[!is.na(sig_set$human_orth),]
+gene_set = paste0(sig_set$human_orth, '_Pituitary')
+
+sex_table = read.delim('GTEx_Analysis_v8_Annotations_SubjectPhenotypesDS.txt')
+sex_table$GTEx_ID = gsub('GTEX-', '', sex_table$SUBJID)
+sex_table$sexMF = ifelse(sex_table$SEX==1, 'M', 'F')
+table(sex_table$sexMF)
+new_trts = sex_table[sex_table$GTEx_ID %in% row.names(working_dataset),]
+table(new_trts$sexMF)
+
+working_datasetM = working_dataset[row.names(working_dataset) %in% new_trts$GTEx_ID[new_trts$sexMF=='M'],]
+working_datasetF = working_dataset[row.names(working_dataset) %in% new_trts$GTEx_ID[new_trts$sexMF=='F'],]
+
+male_pit = working_datasetM[,grepl('Pituitary', colnames(working_datasetM))]
+female_pit = working_datasetF[,grepl('Pituitary', colnames(working_datasetF))]
+
+colnames(male_pit) = gsub('_Pituitary', '', colnames(male_pit))
+colnames(female_pit) = gsub('_Pituitary', '', colnames(female_pit))
+
+maledeg = male_pit[,colnames(male_pit) %in% sig_set$human_orth]
+femaledeg = female_pit[,colnames(female_pit) %in% sig_set$human_orth]
+
+df1 = maledeg
+df2 = male_pit
+
+cc1 = bicorAndPvalue(df1, df1, use = 'p')
+cc2 = cc1$bicor
+cc3 = cc1$p
+cc3 = ifelse(cc3<0.01, '*', '')
+pdf(file = 'heatmap deg connectivity GTEx - males.pdf')
+pheatmap(cc2, display_numbers = F, number_color = "black", color = rev(colormap(colormap = colormaps$picnic, nshades = 50)), cluster_rows = T, cluster_cols = T,  main='Module eigengene x trait cors',labels_row = F, labels_col = F)
+dev.off()
+
+
+#correlation network
+df1 = na.omit(df1)
+res.pca <- prcomp(df1, scale = F)
+pc_vet = as.data.frame(res.pca$x)
+vec1 = as.data.frame(pc_vet$PC1)
+row.names(vec1) = row.names(pc_vet)
+
+new_working = df2[row.names(df2) %in% row.names(vec1),]
+#new_working = new_working[,!grepl(origin_tissue, colnames(new_working), fixed=T)]
+
+full_cors = bicorAndPvalue(vec1$`pc_vet$PC1`, new_working, use = 'p')
+cor_table = melt(full_cors$bicor)
+cor_table$Var1=NULL
+colnames(cor_table) = c('gene_tissue', 'bicor')
+new_p = melt(full_cors$p)
+
+cor_table$pvalue = new_p$value[match(cor_table$gene_tissue, new_p$Var2)]
+cor_table = na.omit(cor_table)
+qest = qvalue(cor_table$pvalue)
+cor_table$qvalue = qest$qvalues
+cor_table$gene_symbol = gsub("\\_.*","",cor_table$gene_tissue)
+cor_table$tissue = gsub(".*_","",cor_table$gene_tissue)
+cor_table = cor_table[!is.na(cor_table$tissue),]
+cor_table = cor_table[order(cor_table$pvalue, decreasing = F),]
+
+res1 = cor_table[cor_table$pvalue<0.01,]
+res1 = na.omit(res1)
+write.csv(res1, file = 'significant crosstissue enrichments with pituitary DEG PC1 - male.csv', row.names = F)
+
+sig_table = cor_table[cor_table$qvalue<0.1,]
+sig_table$qcat =ifelse(sig_table$qvalue<0.01, 'q<0.01', 'q<0.1')
+sig_table$qcat =ifelse(sig_table$qvalue<0.0001, 'q<0.0001', paste0(sig_table$qcat))
+
+
+#########################################################
+#look at candidate secreted proteins
+sec_prots = read.delim('human secreted proteins.tab')
+nn1 = cor_table[cor_table$gene_symbol %in% sec_prots$Gene.names...primary..,]
+head(cor_table)
+nn1 = nn1[1:7,]
+library(forcats)
+pdf(file = 'candidate secreted proteins - males.pdf')
+ggplot(nn1, aes(x=fct_reorder(gene_tissue, -log10(pvalue), .desc = TRUE), y=-log10(pvalue))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + geom_col(fill='darkorange2') + xlab('') + geom_hline(yintercept=2,linetype=2)
+dev.off()
+
+
+
+#####################################################
+#same in females
+df1 = femaledeg
+df2 = female_pit
+
+cc1 = bicorAndPvalue(df1, df1, use = 'p')
+cc2 = cc1$bicor
+cc3 = cc1$p
+cc3 = ifelse(cc3<0.01, '*', '')
+pdf(file = 'heatmap deg connectivity GTEx - females.pdf')
+pheatmap(cc2, display_numbers = F, number_color = "black", color = rev(colormap(colormap = colormaps$picnic, nshades = 50)), cluster_rows = T, cluster_cols = T,  main='Module eigengene x trait cors',labels_row = F, labels_col = F)
+dev.off()
+
+
+#correlation network
+df1 = na.omit(df1)
+res.pca <- prcomp(df1, scale = F)
+pc_vet = as.data.frame(res.pca$x)
+vec1 = as.data.frame(pc_vet$PC1)
+row.names(vec1) = row.names(pc_vet)
+
+new_working = df2[row.names(df2) %in% row.names(vec1),]
+#new_working = new_working[,!grepl(origin_tissue, colnames(new_working), fixed=T)]
+
+full_cors = bicorAndPvalue(vec1$`pc_vet$PC1`, new_working, use = 'p')
+cor_table = melt(full_cors$bicor)
+cor_table$Var1=NULL
+colnames(cor_table) = c('gene_tissue', 'bicor')
+new_p = melt(full_cors$p)
+
+cor_table$pvalue = new_p$value[match(cor_table$gene_tissue, new_p$Var2)]
+cor_table = na.omit(cor_table)
+qest = qvalue(cor_table$pvalue)
+cor_table$qvalue = qest$qvalues
+cor_table$gene_symbol = gsub("\\_.*","",cor_table$gene_tissue)
+cor_table$tissue = gsub(".*_","",cor_table$gene_tissue)
+cor_table = cor_table[!is.na(cor_table$tissue),]
+cor_table = cor_table[order(cor_table$pvalue, decreasing = F),]
+
+res1 = cor_table[cor_table$pvalue<0.01,]
+res1 = na.omit(res1)
+write.csv(res1, file = 'significant crosstissue enrichments with pituitary DEG PC1 - female.csv', row.names = F)
+
+sig_table = cor_table[cor_table$qvalue<0.1,]
+sig_table$qcat =ifelse(sig_table$qvalue<0.01, 'q<0.01', 'q<0.1')
+sig_table$qcat =ifelse(sig_table$qvalue<0.0001, 'q<0.0001', paste0(sig_table$qcat))
+
+
+#########################################################
+#look at candidate secreted proteins
+sec_prots = read.delim('G:/My Drive/Datasets/Human/genome files/human secreted proteins.tab')
+nn1 = cor_table[cor_table$gene_symbol %in% sec_prots$Gene.names...primary..,]
+head(cor_table)
+nn1 = nn1[1:7,]
+library(forcats)
+pdf(file = 'candidate secreted proteins - females.pdf')
+ggplot(nn1, aes(x=fct_reorder(gene_tissue, -log10(pvalue), .desc = TRUE), y=-log10(pvalue))) + theme_classic() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + geom_col(fill='darkorange2') + xlab('') + geom_hline(yintercept=2,linetype=2)
+dev.off()
