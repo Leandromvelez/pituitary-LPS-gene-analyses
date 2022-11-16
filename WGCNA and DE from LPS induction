@@ -1,3 +1,4 @@
+setwd('')  #Set working directory where files needed are stored
 
 library(WGCNA)
 library(reshape2)
@@ -8,7 +9,10 @@ library(pheatmap)
 library(colormap)
 library(pcaMethods)
 library(qgraph)
+library(limma)
+library(add2ggplot)
 allowWGCNAThreads()
+
 expr_data = read.csv('20201006_lawson_nicholas_inflammation-in-polycystic-ovary-syndrome_rnaseq_data_exploration_20201106105257_filtered_pc_genes_tmm_normed_cpms_annot.csv')
 met_dat = read.csv('20201006_lawson_nicholas_inflammation-in-polycystic-ovary-syndrome_rnaseq_data_integration_20201027095641_metadata.csv')
 trait_data = read.csv('20201006_lawson_nicholas_Additional variables.csv')
@@ -71,8 +75,8 @@ traitColors = numbers2colors(datTraits, signed = FALSE)
 # Plot the sample dendrogram and the colors underneath.
 pdf(file = 'sample dendrogram with traits.pdf')
 plotDendroAndColors(sampleTree2, traitColors,
-                   groupLabels = names(datTraits),
-                  main = "Sample dendrogram and trait heatmap")
+                    groupLabels = names(datTraits),
+                    main = "Sample dendrogram and trait heatmap")
 dev.off()
 
 
@@ -236,7 +240,7 @@ dev.off()
 
 ##############################################################################################
 #perform DE
-library(limma)
+
 new_cnts = dcast(melt_dat, Sample_ID ~ gene_symbol, value.var = 'value', fun.aggregate = mean)
 row.names(new_cnts) = new_cnts$Sample_ID
 new_cnts$Sample_ID=NULL
@@ -306,4 +310,32 @@ write.csv(mm2, file = 'Module membership table with DEGS adjp_less0.1 table.csv'
 
 write.csv(res1, 'file = results from limma on Treated over Cntl.csv')
 
+## Gene onthology (GO) Gene set enrichament analysis (GSEA)
+library(clusterProfiler)
+library(org.Mm.eg.db)
 
+gsea_1 = bitr(rownames(res_table), fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Mm.eg.db")
+
+gsea_1$fc=res_table$logFC[rownames(res_table) %in% gsea_1$SYMBOL]
+
+gsea_2 <- gsea_1$fc
+
+## Name each fold change with the corresponding Entrez ID
+names(gsea_2) <-gsea_1$ENTREZID
+#Next we need to order the fold changes in decreasing order. To do this we'll use the sort() function, which takes a vector as input. This is in contrast to Tidyverse's arrange(), which requires a data frame.
+
+## Sort fold changes in decreasing order
+gsea_2 <- sort(gsea_2, decreasing = TRUE)
+
+head(gsea_2)
+
+gsea_go <- gseGO(geneList     = gsea_2,
+                 OrgDb        = org.Mm.eg.db,
+                 ont          = "ALL",
+                 minGSSize    = 100,
+                 maxGSSize    = 500,
+                 pvalueCutoff = 0.05,
+                 verbose      = FALSE)
+
+
+dotplot(gsea_go, showCategory=10, split=".sign") + facet_grid(.~.sign) + ggtitle('GSEA top GO terms, LPS vs CTRL')
