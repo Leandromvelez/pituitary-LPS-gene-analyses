@@ -11,6 +11,7 @@ library(pcaMethods)
 library(qgraph)
 library(limma)
 library(add2ggplot)
+library(ggrepel)
 allowWGCNAThreads()
 
 expr_data = read.csv('20201006_lawson_nicholas_inflammation-in-polycystic-ovary-syndrome_rnaseq_data_exploration_20201106105257_filtered_pc_genes_tmm_normed_cpms_annot.csv')
