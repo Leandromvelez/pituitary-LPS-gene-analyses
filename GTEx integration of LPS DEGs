@@ -1,3 +1,5 @@
+setwd('') #set working directory
+
 library(WGCNA)
 library(reshape2)
 library(factoextra)
@@ -13,22 +15,22 @@ library(FactoMineR)
 allowWGCNAThreads()
 deg_set = read.csv('results from limma on Treated over Cntl.csv')
 load('GTEx NA included env.RData')
-
+GTEx_full = NULL
 working_dataset=GTEx_subfiltered
+GTEx_subfiltered = NULL
 row.names(working_dataset) = working_dataset$gene_tissue
 working_dataset$gene_tissue=NULL
 working_dataset = as.data.frame(t(working_dataset))
 working_dataset[1:5,1:5]
-test1 = working_dataset[,grepl('ITIH5', colnames(working_dataset))]
-colnames(test1)
-orths_table = read.delim('G:/My Drive/Datasets/Mouse/genome files/Mouse Gene info with Human Orthologues.txt')
+
+orths_table = read.delim('D:/.shortcut-targets-by-id/18Bx5l8F9kugDCbg-5ciJUuopo66T6-TW/Datasets/Mouse/genome files/Mouse Gene info with Human Orthologues.txt')
 deg_set$deg_sig_stringent = ifelse(deg_set$adj.P.Val<0.05, 'LPS DE Significant', 'NS')
 sig_set = deg_set[deg_set$deg_sig_stringent=='LPS DE Significant',]
 sig_set$human_orth = orths_table$human_orth[match(sig_set$ID, orths_table$Symbol)]
 sig_set = sig_set[!is.na(sig_set$human_orth),]
 gene_set = paste0(sig_set$human_orth, '_Pituitary')
 
-sex_table = read.delim('GTEx_Analysis_v8_Annotations_SubjectPhenotypesDS.txt')
+sex_table = read.delim('D:/.shortcut-targets-by-id/1FldQDp-I9NGqgBo0cW9WS3KuYCSeHDM7/github/datasets used/GTEx_Analysis_v8_Annotations_SubjectPhenotypesDS.txt')
 sex_table$GTEx_ID = gsub('GTEX-', '', sex_table$SUBJID)
 sex_table$sexMF = ifelse(sex_table$SEX==1, 'M', 'F')
 table(sex_table$sexMF)
@@ -95,7 +97,7 @@ sig_table$qcat =ifelse(sig_table$qvalue<0.0001, 'q<0.0001', paste0(sig_table$qca
 
 #########################################################
 #look at candidate secreted proteins
-sec_prots = read.delim('human secreted proteins.tab')
+sec_prots = read.delim('D:/.shortcut-targets-by-id/1FldQDp-I9NGqgBo0cW9WS3KuYCSeHDM7/github/datasets used/human secreted proteins.tab')
 nn1 = cor_table[cor_table$gene_symbol %in% sec_prots$Gene.names...primary..,]
 head(cor_table)
 nn1 = nn1[1:7,]
@@ -156,7 +158,7 @@ sig_table$qcat =ifelse(sig_table$qvalue<0.0001, 'q<0.0001', paste0(sig_table$qca
 
 #########################################################
 #look at candidate secreted proteins
-sec_prots = read.delim('G:/My Drive/Datasets/Human/genome files/human secreted proteins.tab')
+
 nn1 = cor_table[cor_table$gene_symbol %in% sec_prots$Gene.names...primary..,]
 head(cor_table)
 nn1 = nn1[1:7,]
