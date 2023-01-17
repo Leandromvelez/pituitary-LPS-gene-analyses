@@ -144,6 +144,8 @@ module_membership = as.data.frame(net$colors)
 colnames(module_membership) = 'module'
 module_membership$gene = row.names(module_membership)
 module_membership = module_membership[!module_membership$module==0,]
+## modules and genes per module count
+table(module_membership$module)
 
 new1 = bicorAndPvalue(all_tog1, datExpr, use = 'p')
 new_set = melt(new1$bicor)
